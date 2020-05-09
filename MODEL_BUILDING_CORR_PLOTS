@@ -1,0 +1,358 @@
+YEMEN 
+
+library(sp)
+library(rgeos)
+library(rgdal)
+library(maptools)
+library(spdep)
+library(plyr) 
+library(reshape)
+library(corrr)
+library(corrplot)
+library(dplyr)
+
+---------------------------------------------------------------------
+Counting Events to join to Polygon
+
+yemen  = read.csv("YEMEN/YEMEN.csv")
+countyemen  = count(yemen, c("admin1", "sub_event_type"))
+pivot <- cast(yemen, admin1 ~ sub_event_type)
+write.csv(pivot,"yemencounts.csv", row.names = FALSE)
+
+--------------------------------------------------------------------
+
+y = read.csv("yemencounts.csv")
+y = y %>%
+  select(Peaceful.protest,Abduction.forced.disappearance,Air.drone.strike, Armed.clash, Excessive.force.against.protesters,
+  Violent.demonstration, Arrests, Remote.explosive.landmine.IED, Agreement, Change.to.group.activity, Government.regains.territory)
+y %>% correlate() %>% network_plot(min_cor=0.7)
+
+
+y.cor = cor(y)
+
+col = colorRampPalette(c("red","white","lightskyblue"))(200)
+
+corrplot(y.cor, method = "color", col = col,
+         type = "upper", order = "hclust", number.cex = .4,
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 45, 
+         diag = FALSE)
+
+Yemen = readOGR("FINAL_YEMEN.shp")
+
+IDs<-row.names(as(Yemen,"data.frame"))
+Yemenxy<-coordinates(Yemen)
+
+NN1<-knn2nb(knearneigh(Yemenxy,k=1),row.names=IDs)
+NN2<-knn2nb(knearneigh(Yemenxy,k=2),row.names=IDs)
+
+
+par(mfrow=c(1,2))
+plot(Yemen,main="First Nearest Neighbor")
+plot(NN1,Yemenxy,add=TRUE)
+plot(Yemen,main="First Two Nearest Neighbors")
+plot(NN2,Yemenxy,add=TRUE)
+plot(Yemen,main="Within 3000 ft")
+plot(NN3,Yemenxy,add=TRUE)
+
+NN3 <- dnearneigh(Yemenxy, d1=0, d2=3000)
+
+nbr1<-poly2nb(Yemen)
+nbr2<-poly2nb(Yemen, queen=FALSE)
+
+par(mfrow=c(1,2))
+plot(Yemen,main="Queen")
+plot(nbr1,Yemenxy,add=TRUE)
+plot(Yemen,main="Rook")
+plot(nbr2,Yemenxy,add=TRUE)
+
+W1_contg<-nb2listw(nbr1,style="B",zero.policy=TRUE)
+W1_dist<-nb2listw(NN2,style="B")
+W2_contg<-nb2listw(nbr1, zero.policy=TRUE)
+W2_dist<-nb2listw(NN2)
+
+Yemen2=Yemen
+
+names(Yemen2)
+Yemen2$yemencount <- as.integer(Yemen2$yemencount)
+moran.test(Yemen2$yemencount,listw=W2_contg,zero.policy=TRUE)
+moran.plot(Yemen2$yemencount, listw=W2_contg,zero.policy=TRUE)
+
+
+Yemen2@data$ yemencount<-as.numeric(as.character(Yemen2$ yemencount))
+Yemen2@data$ yemencou_1<-as.numeric(as.character(Yemen2$ yemencou_1))
+Yemen2@data$ yemencou_2<-as.numeric(as.character(Yemen2$ yemencou_2))
+Yemen2@data$ yemencou_3<-as.numeric(as.character(Yemen2$ yemencou_3))
+Yemen2@data$ yemencou_4<-as.numeric(as.character(Yemen2$ yemencou_4))
+Yemen2@data$ yemencou_6<-as.numeric(as.character(Yemen2$ yemencou_6))
+Yemen2@data$ yemencou_9<-as.numeric(as.character(Yemen2$ yemencou_9))
+Yemen2@data$ yemencou10<-as.numeric(as.character(Yemen2$ yemencou10))
+Yemen2@data$ yemencou18<-as.numeric(as.character(Yemen2$ yemencou18))
+Yemen2@data$ yemencou20<-as.numeric(as.character(Yemen2$ yemencou20))
+Yemen2@data$ yemencou24<-as.numeric(as.character(Yemen2$ yemencou24))
+
+
+Yemen2@data$ yemencount<-as.numeric(as.character(Yemen2$ yemencount))
+Yemen2@data$ yemencou_1<-as.numeric(as.character(Yemen2$ yemencou_1))
+Yemen2@data$ yemencou_2<-as.numeric(as.character(Yemen2$ yemencou_2))
+Yemen2@data$ yemencou_3<-as.numeric(as.character(Yemen2$ yemencou_3))
+Yemen2@data$ yemencou_4<-as.numeric(as.character(Yemen2$ yemencou_4))
+Yemen2@data$ yemencou_5<-as.numeric(as.character(Yemen2$ yemencou_5))
+Yemen2@data$ yemencou_6<-as.numeric(as.character(Yemen2$ yemencou_6))
+Yemen2@data$ yemencou_7<-as.numeric(as.character(Yemen2$ yemencou_7))
+Yemen2@data$ yemencou_8<-as.numeric(as.character(Yemen2$ yemencou_8))
+Yemen2@data$ yemencou_9<-as.numeric(as.character(Yemen2$ yemencou_9))
+Yemen2@data$ yemencou10<-as.numeric(as.character(Yemen2$ yemencou10))
+Yemen2@data$ yemencou11<-as.numeric(as.character(Yemen2$ yemencou11))
+Yemen2@data$ yemencou12<-as.numeric(as.character(Yemen2$ yemencou12))
+Yemen2@data$ yemencou13<-as.numeric(as.character(Yemen2$ yemencou13))
+Yemen2@data$ yemencou14<-as.numeric(as.character(Yemen2$ yemencou14))
+Yemen2@data$ yemencou15<-as.numeric(as.character(Yemen2$ yemencou15))
+Yemen2@data$ yemencou16<-as.numeric(as.character(Yemen2$ yemencou16))
+Yemen2@data$ yemencou17<-as.numeric(as.character(Yemen2$ yemencou17))
+Yemen2@data$ yemencou18<-as.numeric(as.character(Yemen2$ yemencou18))
+Yemen2@data$ yemencou19<-as.numeric(as.character(Yemen2$ yemencou19))
+Yemen2@data$ yemencou20<-as.numeric(as.character(Yemen2$ yemencou20))
+Yemen2@data$ yemencou21<-as.numeric(as.character(Yemen2$ yemencou21))
+Yemen2@data$ yemencou22<-as.numeric(as.character(Yemen2$ yemencou22))
+Yemen2@data$ yemencou23<-as.numeric(as.character(Yemen2$ yemencou23))
+Yemen2@data$ yemencou24<-as.numeric(as.character(Yemen2$ yemencou24))
+
+
+M1<-lm(Yemen2$ yemencount~ Yemen2$ yemencou_1+Yemen2$yemencou_2+Yemen2$yemencou_3+Yemen2$yemencou_4+Yemen2$yemencou_6+Yemen2$yemencou_9+Yemen2$yemencou10+Yemen2$yemencou18+Yemen2$yemencou20+Yemen2$yemencou24)
+
+M2<-lm(Yemen2$ yemencount~ Yemen2$ yemencou_1+Yemen2$yemencou_2+Yemen2$yemencou_9)
+
+lm.morantest(M1, W2_contg,zero.policy=TRUE)
+
+lm.LMtests(M1, W2_contg, test=c("LMlag", "LMerr"),zero.policy=TRUE)
+
+Mlag<-lagsarlm(Yemen2$ yemencount~ Yemen2$ yemencou_1+Yemen2$yemencou_2+Yemen2$yemencou_3+Yemen2$yemencou_4+Yemen2$yemencou_6+Yemen2$yemencou_9+Yemen2$yemencou10+Yemen2$yemencou18+Yemen2$yemencou20+Yemen2$yemencou24,
+data=Yemen2,W2_contg,zero.policy=TRUE)
+
+Merr<-errorsarlm(Yemen2$ yemencount~ Yemen2$ yemencou_1+Yemen2$yemencou_2+Yemen2$yemencou_3+Yemen2$yemencou_4+Yemen2$yemencou_6+Yemen2$yemencou_9+Yemen2$yemencou10+Yemen2$yemencou18+Yemen2$yemencou20+Yemen2$yemencou24,
+data=Yemen2,W2_contg,zero.policy=TRUE)
+
+Merr2<-errorsarlm(Yemen2$ yemencount~ Yemen2$ yemencou_1+ Yemen2$yemencou_3+Yemen2$yemencou_9,
+data=Yemen2,W2_contg,zero.policy=TRUE)
+
+quartz()
+par(mfrow=c(2,2)) 
+plot(M1)
+
+quartz()
+par(mfrow=c(2,2)) 
+plot(M2)
+
+
+-----------------------------------------------------------------------------
+IRAQ
+
+---------------------------------------------------------------------
+Counting Events to join to Polygon
+
+iraq = read.csv("IRAQ/IRAQ.csv")
+pivot <- cast(iraq, admin1 ~ sub_event_type)
+write.csv(pivot,"countiraq.csv", row.names = FALSE)
+
+---------------------------------------------------------------------
+
+y  = read.csv("iraqcounts.csv")
+y = y %>%
+  select(Peaceful.protest,Abduction.forced.disappearance,Air.drone.strike, Armed.clash, Excessive.force.against.protesters,
+  Violent.demonstration, Arrests, Remote.explosive.landmine.IED, Agreement, Change.to.group.activity, Government.regains.territory)
+y %>% correlate() %>% network_plot(min_cor=0.7)
+
+y.cor = cor(y)
+
+col = colorRampPalette(c("red","white","lightskyblue"))(200)
+
+corrplot(y.cor, method = "color", col = col,
+         type = "upper", order = "hclust", number.cex = .4,
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 45, 
+         diag = FALSE)
+
+Iraq = readOGR("FINAL_IRAQ.shp")
+
+IDs<-row.names(as(Iraq,"data.frame"))
+Iraqxy<-coordinates(Iraq)
+
+NN1<-knn2nb(knearneigh(Iraqxy,k=1),row.names=IDs)
+NN2<-knn2nb(knearneigh(Iraqxy,k=2),row.names=IDs)
+NN3 <- dnearneigh(Iraqxy, d1=0, d2=3000)
+
+par(mfrow=c(1,3))
+plot(Iraq,main="First Nearest Neighbor")
+plot(NN1,Iraqxy,add=TRUE)
+plot(Iraq,main="First Two Nearest Neighbors")
+plot(NN2,Iraqxy,add=TRUE)
+plot(Iraq,main="Within 3000 ft")
+plot(NN3,Iraqxy,add=TRUE)
+
+
+nbr1<-poly2nb(Iraq)
+nbr2<-poly2nb(Iraq, queen=FALSE)
+
+par(mfrow=c(1,2))
+plot(Iraq,main="Queen")
+plot(nbr1,Iraqxy,add=TRUE)
+plot(Iraq,main="Rook")
+plot(nbr2,Iraqxy,add=TRUE)
+
+W1_contg<-nb2listw(nbr1,style="B",zero.policy=TRUE)
+W1_dist<-nb2listw(NN2,style="B")
+W2_contg<-nb2listw(nbr1, zero.policy=TRUE)
+W2_dist<-nb2listw(NN2)
+
+Iraq2=Iraq
+names(Iraq2)
+Iraq2$countiraq_ <- as.integer(Iraq2$countiraq_)
+moran.test(Iraq2$countiraq_,listw=W2_contg,zero.policy=TRUE)
+moran.plot(Iraq2$countiraq_, listw=W2_contg,zero.policy=TRUE)
+
+
+Iraq2@data$ countiraq_<-as.numeric(as.character(Iraq2$ countiraq_))
+Iraq2@data$ countira_1<-as.numeric(as.character(Iraq2$ countira_1))
+Iraq2@data$ countira_2<-as.numeric(as.character(Iraq2$ countira_2))
+Iraq2@data$ countira_3<-as.numeric(as.character(Iraq2$ countira_3))
+Iraq2@data$ countira_4<-as.numeric(as.character(Iraq2$ countira_4))
+Iraq2@data$ countira_6<-as.numeric(as.character(Iraq2$ countira_6))
+Iraq2@data$ countira_9<-as.numeric(as.character(Iraq2$ countira_9))
+Iraq2@data$ countira10<-as.numeric(as.character(Iraq2$ countira10))
+Iraq2@data$ countira18<-as.numeric(as.character(Iraq2$ countira18))
+Iraq2@data$ countira20<-as.numeric(as.character(Iraq2$ countira20))
+Iraq2@data$ countira23<-as.numeric(as.character(Iraq2$ countira23))
+
+
+M1<-lm(Iraq2$ countiraq_~ Iraq2$countira_1+Iraq2$ countira_2+Iraq2$ countira_3+Iraq2$ countira_4+Iraq2$ countira_6+Iraq2$ countira_9+Iraq2$ countira10+Iraq2$ countira18+Iraq2$ countira20+Iraq2$ countira23)
+
+M2<-lm(Iraq2$ countiraq_~ + Iraq2$ countira10+Iraq2$ countira20)
+
+lm.morantest(M1, W2_contg,zero.policy=TRUE)
+
+lm.LMtests(M1, W2_contg, test=c("LMlag", "LMerr"),zero.policy=TRUE)
+
+Mlag<-lagsarlm(Iraq2$ countiraq_~ Iraq2$countira_1+Iraq2$ countira_2+Iraq2$ countira_3+Iraq2$ countira_4+Iraq2$ countira_6+Iraq2$ countira_9+Iraq2$ countira10+Iraq2$ countira18+Iraq2$ countira20+Iraq2$ countira23,
+data=Iraq2,W2_contg,zero.policy=TRUE)
+
+Merr<-errorsarlm(Iraq2$ countiraq_~ Iraq2$countira_1+Iraq2$ countira_2+Iraq2$ countira_3+Iraq2$ countira_4+Iraq2$ countira_6+Iraq2$ countira_9+Iraq2$ countira10+Iraq2$ countira18+Iraq2$ countira20+Iraq2$ countira23,
+data=Iraq2,W2_contg,zero.policy=TRUE)
+
+quartz()
+par(mfrow=c(2,2)) 
+plot(M1)
+
+quartz()
+par(mfrow=c(2,2)) 
+plot(M2)
+
+------------------------------------------------------------------------------
+LIBYA
+
+---------------------------------------------------------------------
+Counting Events to join to Polygon
+
+libya = read.csv("LIBYA/LIBYA.csv")
+pivot <- cast(libya, admin1 ~ sub_event_type)
+write.csv(pivot,"countlibya.csv", row.names = FALSE)
+
+---------------------------------------------------------------------
+
+y  = read.csv("countlibya.csv")
+y = y %>%
+  select(Peaceful.protest,Abduction.forced.disappearance,Air.drone.strike, Armed.clash, Excessive.force.against.protesters,
+  Violent.demonstration, Arrests, Remote.explosive.landmine.IED, Agreement, Change.to.group.activity, Government.regains.territory)
+y %>% correlate() %>% network_plot(min_cor=0.7)
+
+
+y.cor = cor(y)
+
+col = colorRampPalette(c("red","white","lightskyblue"))(200)
+
+corrplot(y.cor, method = "color", col = col,
+         type = "upper", order = "hclust", number.cex = .4,
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 45, 
+         diag = FALSE)
+
+
+
+library(sp)
+library(rgeos)
+library(rgdal)
+library(maptools)
+library(spdep)
+
+Libya = readOGR("FINAL_LIBYA.shp")
+
+IDs<-row.names(as(Libya,"data.frame"))
+Libyaxy<-coordinates(Libya)
+
+NN1<-knn2nb(knearneigh(Libyaxy,k=1),row.names=IDs)
+NN2<-knn2nb(knearneigh(Libyaxy,k=2),row.names=IDs)
+NN3 <- dnearneigh(Libyaxy, d1=0, d2=3000)
+
+par(mfrow=c(1,3))
+plot(Libya,main="First Nearest Neighbor")
+plot(NN1,Libyaxy,add=TRUE)
+plot(Libya,main="First Two Nearest Neighbors")
+plot(NN2,Libyaxy,add=TRUE)
+plot(Libya,main="Within 3000 ft")
+plot(NN3,Libyaxy,add=TRUE)
+
+nbr1<-poly2nb(Libya)
+nbr2<-poly2nb(Libya, queen=FALSE)
+
+par(mfrow=c(1,2))
+plot(Libya,main="Queen")
+plot(nbr1,Libyaxy,add=TRUE)
+plot(Libya,main="Rook")
+plot(nbr2,Libyaxy,add=TRUE)
+
+W1_contg<-nb2listw(nbr1,style="B",zero.policy=TRUE)
+W1_dist<-nb2listw(NN2,style="B")
+W2_contg<-nb2listw(nbr1, zero.policy=TRUE)
+W2_dist<-nb2listw(NN2)
+
+Libya2=Libya
+names(Libya2)
+Libya2$countlibya <- as.integer(Libya2$countlibya)
+moran.test(Libya2$countlibya,listw=W2_contg,zero.policy=TRUE)
+moran.plot(Libya2$countlibya, listw=W2_contg,zero.policy=TRUE)
+
+
+Libya2@data$ countlibya<-as.numeric(as.character(Libya2$ countlibya))
+Libya2@data$ countlib_1<-as.numeric(as.character(Libya2$ countlib_1))
+Libya2@data$ countlib_2<-as.numeric(as.character(Libya2$ countlib_2))
+Libya2@data$ countlib_3<-as.numeric(as.character(Libya2$ countlib_3))
+Libya2@data$ countlib_4<-as.numeric(as.character(Libya2$ countlib_4))
+Libya2@data$ countlib_6<-as.numeric(as.character(Libya2$ countlib_6))
+Libya2@data$ countlib_9<-as.numeric(as.character(Libya2$ countlib_9))
+Libya2@data$ countlib10<-as.numeric(as.character(Libya2$ countlib10))
+Libya2@data$ countlib18<-as.numeric(as.character(Libya2$ countlib18))
+Libya2@data$ countlib20<-as.numeric(as.character(Libya2$ countlib20))
+Libya2@data$ countlib23<-as.numeric(as.character(Libya2$ countlib23))
+
+
+M1<-lm(Libya2$ countlibya~ Libya2$countlib_1+Libya2$ countlib_2+Libya2$ countlib_3+Libya2$ countlib_4+Libya2$ countlib_6+Libya2$ countlib_9+Libya2$ countlib10+Libya2$ countlib18+Libya2$ countlib20+Libya2$ countlib23)
+
+M2<-lm(Libya2$ countlibya~ Libya2$countlib_1+Libya2$ countlib18)
+
+lm.morantest(M1, W2_contg,zero.policy=TRUE)
+
+lm.LMtests(M1, W2_contg, test=c("LMlag", "LMerr"),zero.policy=TRUE)
+
+
+Mlag<-lagsarlm(Libya2$ countlibya~ Libya2$countlib_1+Libya2$ countlib_2+Libya2$ countlib_3+Libya2$ countlib_4+Libya2$ countlib_6+Libya2$ countlib_9+Libya2$ countlib10+Libya2$ countlib18+Libya2$ countlib20+Libya2$ countlib23,
+data=Libya2,W2_contg,zero.policy=TRUE)
+
+Merr<-errorsarlm(Libya2$ countlibya~ Libya2$countlib_1+Libya2$ countlib_2+Libya2$ countlib_3+Libya2$ countlib_4+Libya2$ countlib_6+Libya2$ countlib_9+Libya2$ countlib10+Libya2$ countlib18+Libya2$ countlib20+Libya2$ countlib23,
+data=Libya2,W2_contg,zero.policy=TRUE)
+
+
+
+
+
+
+

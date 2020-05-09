@@ -1,0 +1,843 @@
+library(dplyr)
+library(cluster)
+library(Rtsne)
+library(ggplot2)
+library(plyr)
+library(corrplot)
+library(tidyverse)
+library(caret)
+library(scatterplot3d)
+library(psych)
+library(tidyr)
+library(reshape2)
+library(varhandle)
+library(fastDummies)
+
+library(spatstat)
+library(sp)
+library(rgeos)
+library(aspace)
+library(RColorBrewer)
+
+----------------------------------------------------------------------------------------------
+
+AGGREGATE PLOTS AND MEAN MINIMUM DISTANCE CALC - RUN THIS FOR EACH COUNTRY
+
+m1=read.csv("Peaceful_protest.csv")
+m2=read.csv("Abduction_forced_disappearance.csv")
+m3=read.csv("Air_drone_strike.csv")
+m4=read.csv("Armed_clash.csv")
+m5=read.csv("Excessive_force_against_protesters.csv")
+m6=read.csv("Violent_demonstration.csv")
+m7=read.csv("Arrests.csv")
+m8=read.csv("Remote_explosive_landmine_IED.csv")
+m9=read.csv("Agreement.csv")
+m10 =read.csv("Change_to_group_activity.csv")
+m11 = read.csv("Government_regains_territory.csv")
+
+m1=read.csv("Peaceful_protest.csv")
+m2=read.csv("Abduction_forced_disappearance.csv")
+m3=read.csv("Air_drone_strike.csv")
+m4=read.csv("Armed_clash.csv")
+m5=read.csv("Excessive_force_against_protesters.csv")
+m6=read.csv("Violent_demonstration.csv")
+m7=read.csv("Arrests.csv")
+m8=read.csv("Remote_explosive_landmine_IED.csv")
+m9=read.csv("Agreement.csv")
+m10 =read.csv("Change_to_group_activity.csv")
+m11 = read.csv("Government_regains_territory.csv")
+
+par(mfrow=c(2,6))
+par(bg="ivory")
+plot(m1$latitude,m1$longitude,pch=16,col='navy',main="Peaceful Protests")
+plot(m2$latitude,m2$longitude,pch=16,col='black',main="Abductions")
+plot(m3$latitude,m3$longitude,pch=16,col='red',main="Air Drone Strikes")
+plot(m4$latitude,m4$longitude,pch=16,col='green',main="Armed Clash")
+plot(m5$latitude,m5$longitude,pch=16,col='purple',main="Excessive Force on Protestors")
+plot(m6$latitude,m6$longitude,pch=16,col='orange',main="Violent Demonstration")
+plot(m7$latitude,m7$longitude,pch=16,col='gray',main="Arrests")
+plot(m8$latitude,m8$longitude,pch=16,col='blue',main="Remote Explosions/IED")
+plot(m9$latitude,m9$longitude,pch=16,col='magenta',main="Agreement")
+plot(m10$latitude,m10$longitude,pch=16,col='burlywood',main="Change to Group Activity")
+plot(m11$latitude,m11$longitude,pch=16,col='lightpink',main="Government Regains Territory")
+
+
+
+m1 = m1 %>% select(26,27)
+m2 = m2 %>% select(26,27)
+m3 = m3 %>% select(26,27)
+m4 = m4 %>% select(26,27)
+m5 = m5 %>% select(26,27)
+m6 = m6 %>% select(26,27)
+m7 = m7 %>% select(26,27)
+m8 = m8 %>% select(26,27)
+m9 = m9 %>% select(26,27)
+m10 = m10 %>% select(26,27)
+m11 = m11 %>% select(26,27)
+
+
+par(bg="ivory")
+plot(m1$latitude, m1$longitude ,pch=16,col='navy')
+points(m2$latitude, m2$longitude ,pch=16,col='black')
+points(m3$latitude, m3$longitude ,pch=16,col='red')
+points(m4$latitude, m4$longitude ,pch=16,col='green')
+points(m5$latitude, m5$longitude ,pch=16,col='purple')
+points(m6$latitude, m6$longitude ,pch=16,col='orange')
+points(m7$latitude, m7$longitude ,pch=16,col='gray')
+points(m8$latitude, m8$longitude ,pch=16,col='blue')
+points(m9$latitude, m9$longitude ,pch=16,col='magenta')
+points(m10$latitude, m10$longitude ,pch=16,col='burlywood')
+points(m11$latitude, m11$longitude ,pch=16,col='lightpink')
+
+
+#calc_function
+
+
+
+calc_sde2<-function (id = 1, filename = "SDE_Output.txt", centre.xy = NULL, 
+    calccentre = TRUE, weighted = FALSE, weights = NULL, points = activities, 
+    verbose = FALSE) 
+{
+    errorcode <- 1000
+    if (length(dim(points)) != 2) {
+        errorcode <- 61
+        cat("\n\nWARNING: Provided points input matrix has fewer than 2 columns.")
+        cat("\nERROR CODE: ", errorcode, "\n\n", sep = "")
+        return("ERROR")
+    }
+    if (dim(points)[2] != 2) {
+        errorcode <- 60
+        cat("\n\nWARNING: Provided points input matrix has too many columns, only 2 are allowed.")
+        cat("\nERROR CODE: ", errorcode, "\n\n", sep = "")
+        return("ERROR")
+    }
+    else {
+        n <- dim(points)[1]
+        if (calccentre) {
+            if (length(centre.xy) == 2) {
+                errorcode <- 21
+                cat("\n\nWARNING: Invalid combination: calccentre=TRUE and centre.xy!=NULL")
+                cat("\nERROR CODE: ", errorcode, "\n\n", sep = "")
+                return("ERROR")
+            }
+            else {
+                if (weighted) {
+                  wt.x <- points[, 1] * weights
+                  wt.y <- points[, 2] * weights
+                  WMC.x <- c(sum(wt.x)/sum(weights))
+                  WMC.y <- c(sum(wt.y)/sum(weights))
+                  centre.xy[1] <- WMC.x
+                  centre.xy[2] <- WMC.y
+                }
+                else {
+                  meanx <- sum(as.numeric(points[, 1]))/n
+                  meany <- sum(as.numeric(points[, 2]))/n
+                  centre.xy[1] <- meanx
+                  centre.xy[2] <- meany
+                }
+            }
+        }
+    }
+    points <- cbind(points, points[, 1]^2, points[, 2]^2)
+    points <- cbind(points, points[, 1] - centre.xy[1], points[, 
+        2] - centre.xy[2])
+    points <- cbind(points, points[, 5]^2, points[, 6]^2, points[, 
+        5] * points[, 6])
+    names(points) <- c("x", "y", "x2", "y2", "x'", "y'", "x'2", 
+        "y'2", "x'y'")
+    if (weighted) {
+        top1 <- sum(weights * points[, 7]) - sum(weights * points[, 
+            8])
+        top2 <- sqrt((sum(weights * points[, 7]) - sum(weights * 
+            points[, 8]))^2 + 4 * (sum(weights * points[, 9]))^2)
+        bottom <- (2 * sum(weights * points[, 9]))
+        tantheta <- (top1 + top2)/bottom
+    }
+    else {
+        top1 <- sum(points[, 7]) - sum(points[, 8])
+        top2 <- sqrt((sum(points[, 7]) - sum(points[, 8]))^2 + 
+            4 * (sum(points[, 9]))^2)
+        bottom <- (2 * sum(points[, 9]))
+        tantheta <- (top1 + top2)/bottom
+    }
+    if (tantheta < 0) {
+        theta <- 180 + (atan_d(tantheta))
+    }
+    else {
+        theta <- atan_d(tantheta)
+    }
+    sintheta <- sin_d(theta)
+    costheta <- cos_d(theta)
+    sin2theta <- sintheta^2
+    cos2theta <- costheta^2
+    sinthetacostheta <- sintheta * costheta
+    if (weighted) {
+        sigmax <- sqrt(2) * sqrt(((sum(weights * points[, 7])) * 
+            (cos2theta) - 2 * (sum(weights * points[, 9])) * 
+            (sinthetacostheta) + (sum(weights * points[, 8])) * 
+            (sin2theta))/((sum(weights)) - 2))
+        sigmay <- sqrt(2) * sqrt(((sum(weights * points[, 7])) * 
+            (sin2theta) + 2 * (sum(weights * points[, 9])) * 
+            (sinthetacostheta) + (sum(weights * points[, 8])) * 
+            (cos2theta))/((sum(weights)) - 2))
+    }
+    else {
+        sigmax <- sqrt(2) * sqrt(((sum(points[, 7])) * (cos2theta) - 
+            2 * (sum(points[, 9])) * (sinthetacostheta) + (sum(points[, 
+            8])) * (sin2theta))/(n - 2))
+        sigmay <- sqrt(2) * sqrt(((sum(points[, 7])) * (sin2theta) + 
+            2 * (sum(points[, 9])) * (sinthetacostheta) + (sum(points[, 
+            8])) * (cos2theta))/(n - 2))
+    }
+    if (sigmax > sigmay) {
+        Major <- "SigmaX"
+        Minor <- "SigmaY"
+    }
+    else {
+        Major <- "SigmaY"
+        Minor <- "SigmaX"
+    }
+    lengthsigmax <- 2 * sigmax
+    lengthsigmay <- 2 * sigmay
+    areaSDE <- pi * sigmax * sigmay
+    eccentricity <- sqrt(1 - ((min(sigmax, sigmay)^2)/(max(sigmax, 
+        sigmay)^2)))
+    B <- min(sigmax, sigmay)
+    A <- max(sigmax, sigmay)
+    d2 <- (A - B) * (A + B)
+    phi <- 2 * pi * seq(0, 1, len = 360)
+    sp <- sin(phi)
+    cp <- cos(phi)
+    r <- sigmax * sigmay/sqrt(B^2 + d2 * sp^2)
+    xy <- r * cbind(cp, sp)
+    al <- (90 - theta) * pi/180
+    ca <- cos(al)
+    sa <- sin(al)
+    coordsSDE <- xy %*% rbind(c(ca, sa), c(-sa, ca)) + cbind(rep(centre.xy[1], 
+        360), rep(centre.xy[2], 360))
+    if (verbose) {
+        cat("\n----------------------------------------------")
+        cat("\nCoordinates of centre (x): ", centre.xy[1], sep = "")
+        cat("\nCoordinates of centre (y): ", centre.xy[2], sep = "")
+        cat("\nAngle of rotation: ", round(theta, 2), " clockwise degrees", 
+            sep = "")
+        cat("\nLength of X axis: ", round(lengthsigmax, 2), sep = "")
+        cat("\nLength of Y axis: ", round(lengthsigmay, 2), sep = "")
+        cat("\nArea of SDE ellipse: ", round(areaSDE, 2), sep = "")
+        cat("\ntantheta: ", tantheta, sep = "")
+        cat("\ntheta: ", theta, sep = "")
+        cat("\nsintheta: ", sintheta, sep = "")
+        cat("\ncostheta: ", costheta, sep = "")
+        cat("\nsinthetacostheta: ", sinthetacostheta, sep = "")
+        cat("\nsin2theta: ", sin2theta, sep = "")
+        cat("\ncos2theta: ", cos2theta, sep = "")
+        cat("\nsigmax: ", sigmax, sep = "")
+        cat("\nsigmay: ", sigmay, sep = "")
+        cat("\neccentricity: ", eccentricity, sep = "")
+        cat("\n----------------------------------------------\n\n")
+    }
+    if (sigmax < sigmay) {
+        Theta.Corr <- theta
+    }
+    else {
+        Theta.Corr <- theta + 90
+    }
+    r.SDE <- list(id = id, points = points, coordsSDE = coordsSDE, 
+        calccentre = calccentre, CENTRE.x = centre.xy[1], CENTRE.y = centre.xy[2], 
+        Major = Major, Minor = Minor, theta = theta, Sigma.x = sigmax, 
+        Sigma.y = sigmay, Eccentricity = eccentricity, Area.sde = areaSDE, 
+        TanTheta = tantheta, SinTheta = sintheta, CosTheta = costheta, 
+        SinThetaCosTheta = sinthetacostheta, Sin2Theta = sin2theta, 
+        Cos2Theta = cos2theta, ThetaCorr = Theta.Corr, weighted = weighted, 
+        weights = weights)
+    assign("r.SDE", r.SDE, pos = 1)
+    result.sde <- list(id = id, CALCCENTRE = calccentre, weighted = weighted, 
+        CENTRE.x = centre.xy[1], CENTRE.y = centre.xy[2], Sigma.x = sigmax, 
+        Sigma.y = sigmay, Major = Major, Minor = Minor, Theta = theta, 
+        Eccentricity = eccentricity, Area.sde = areaSDE, TanTheta = tantheta, 
+        SinTheta = sintheta, CosTheta = costheta, SinThetaCosTheta = sinthetacostheta, 
+        Sin2Theta = sin2theta, Cos2Theta = cos2theta, ThetaCorr = Theta.Corr)
+    print(result.sde)
+    result.sde <- as.data.frame(result.sde)
+    assign("sdeatt", result.sde, pos = 1)
+    sdeloc <- as.data.frame(cbind(id, coordsSDE))
+    colnames(sdeloc) = c("id", "x", "y")
+    write.table(sdeloc, sep = ",", file = filename, col.names = FALSE)
+    assign("sdeloc", sdeloc, pos = 1)
+}
+
+dist<-function(x1,x2,y1,y2){
+Mdis=c()
+for (i in 1:length(x1))
+{
+xb1=x1[i]+5000
+xb2=x1[i]-5000
+yb1=y1[i]+5000
+yb2=y1[i]-5000
+
+
+w1=which(x2 >= xb2 & x2 <= xb1 & y2 >=yb2 & y2 <= yb1)
+newx=x2[w1]
+newy=y2[w1]
+DD=c()
+##begin a second loop to find distance between points
+for (j in 1:length(w1))
+{
+DD[j]=sqrt(((newx[j]-x1[i])^2)+((newy[j]-y1[i])^2))
+} 
+Mdis[i]=min(DD)
+
+}
+
+return(Mdis)
+}
+
+
+a=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m1[1:2],verbose=FALSE)
+b=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m2[1:2],verbose=FALSE)
+c=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m3[1:2],verbose=FALSE)
+d=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m4[1:2],verbose=FALSE)
+e=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m5[1:2],verbose=FALSE)
+f=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m6[1:2],verbose=FALSE)
+g=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m7[1:2],verbose=FALSE)
+h=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m8[1:2],verbose=FALSE)
+ii=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m9[1:2],verbose=FALSE)
+j=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m10[1:2],verbose=FALSE)
+k=calc_sde2(id=1,filename="elipse_temp.txt",centre.xy=NULL,calccentre=TRUE,weighted=FALSE,
+weights=NULL,points=m11[1:2],verbose=FALSE)
+
+
+
+polygon(a[,2],a[,3],border='navy')
+polygon(b[,2],b[,3],border='black')
+polygon(c[,2],c[,3],border='red')
+polygon(d[,2],d[,3],border='green')
+polygon(e[,2],e[,3],border='purple')
+polygon(f[,2],f[,3],border='orange')
+polygon(g[,2],g[,3],border='gray')
+polygon(h[,2],h[,3],border='blue')
+polygon(ii[,2],ii[,3],border='magenta')  
+polygon(j[,2],j[,3],border='burlywood')
+polygon(k[,2],k[,3],border='lightpink')
+
+
+
+names(m1) <-c("x","y")
+names(m2) <-c("x","y")
+names(m3) <-c("x","y")
+names(m4) <-c("x","y")
+names(m5) <-c("x","y")
+names(m6) <-c("x","y")
+names(m7) <-c("x","y")
+names(m8) <-c("x","y")
+names(m9) <-c("x","y")
+names(m10) <-c("x","y")
+names(m11) <-c("x","y")
+
+
+coordinates(m1)<- ~x+y
+coordinates(m2)<- ~x+y
+coordinates(m3)<- ~x+y
+coordinates(m4)<- ~x+y
+coordinates(m5)<- ~x+y
+coordinates(m6)<- ~x+y
+coordinates(m7)<- ~x+y
+coordinates(m8)<- ~x+y
+coordinates(m9)<- ~x+y
+coordinates(m10)<- ~x+y
+coordinates(m11)<- ~x+y
+
+
+a <-gDistance(m1,m2,byid=T)
+
+minD=c()
+for (i in 1:dim(a)[1])
+{
+minD[i]=min(a[i,])
+}
+mean(minD)
+
+b <-gDistance(m2,m3,byid=T)
+
+minD=c()
+for (i in 1:dim(b)[1])
+{
+minD[i]=min(b[i,])
+}
+mean(minD)
+
+c <-gDistance(m2,m4,byid=T)
+
+minD=c()
+for (i in 1:dim(c)[1])
+{
+minD[i]=min(c[i,])
+}
+mean(minD)
+
+d <-gDistance(m2,m5,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+e <-gDistance(m2,m6,byid=T)
+
+minD=c()
+for (i in 1:dim(e)[1])
+{
+minD[i]=min(e[i,])
+}
+mean(minD)
+
+f <-gDistance(m2,m7,byid=T)
+
+minD=c()
+for (i in 1:dim(f)[1])
+{
+minD[i]=min(f[i,])
+}
+mean(minD)
+
+g <-gDistance(m2,m8,byid=T)
+
+minD=c()
+for (i in 1:dim(g)[1])
+{
+minD[i]=min(g[i,])
+}
+mean(minD)
+
+h <-gDistance(m2,m9,byid=T)
+
+minD=c()
+for (i in 1:dim(h)[1])
+{
+minD[i]=min(h[i,])
+}
+mean(minD)
+
+o <-gDistance(m2,m10,byid=T)
+
+minD=c()
+for (i in 1:dim(o)[1])
+{
+minD[i]=min(o[i,])
+}
+mean(minD)
+
+j <-gDistance(m2,m11,byid=T)
+
+minD=c()
+for (i in 1:dim(j)[1])
+{
+minD[i]=min(j[i,])
+}
+mean(minD)
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+YEMEN
+
+m1=read.csv("Peaceful_protest.csv")
+m2=read.csv("Abduction_forced_disappearance.csv")
+m9=read.csv("Agreement.csv")
+m1 = m1 %>% select(26,27)
+m2 = m2 %>% select(26,27)
+m9 = m9 %>% select(26,27)
+
+Rdata=m1
+Adata=m2
+tot=rbind(Rdata,Adata)
+names(Rdata)<-c("x","y")
+names(Adata)<-c("x","y")
+names(tot)<-c("x","y")
+coordinates(Rdata)<- ~x+y
+names(m1) <-c("x","y")
+names(m2) <-c("x","y")
+coordinates(Adata)<- ~x+y
+coordinates(tot)<- ~x+y
+
+
+coordinates(m1)<- ~x+y
+coordinates(m2)<- ~x+y
+
+
+d <-gDistance(Rdata,Adata,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+
+
+minD2=c()
+s2=sample(c("A","B"),length(Rdata),replace=TRUE)
+for (i in 1:100)
+{
+s3=sample(s2)
+d <- gDistance(tot[which(s3=="A"),],tot[which(s3=="B"),],byid=T)
+nn=c()
+for (j in 1:dim(d)[1])
+{
+nn[j]=min(d[j,])
+}
+minD2[i]=mean(nn)
+}
+
+
+
+par(mfrow=c(1,3))
+par(bg="ivory")
+plot(m1$x, m1$y,pch=16,col='navy',main="Visual Analysis")
+points(m2$x, m2$y,pch=16,col='black')
+plot(density(minD2),col='navy',main="Mean Distance Analysis")
+abline(v=mean(minD2),col='navy',lty=2)
+abline(v=mean(minD),col='red')
+plot(m1$x, m1$y,pch=16,col='navy',main="SD Elipse Analysis")
+points(m2$x, m2$y,pch=16,col='black')
+polygon(a[,2],a[,3],border='navy')
+polygon(b[,2],b[,3],border='black')
+
+
+
+Rdata=m9
+Adata=m2
+tot=rbind(Rdata,Adata)
+names(Rdata)<-c("x","y")
+names(Adata)<-c("x","y")
+names(tot)<-c("x","y")
+coordinates(Rdata)<- ~x+y
+names(m2) <-c("x","y")
+names(m9) <-c("x","y")
+coordinates(Adata)<- ~x+y
+coordinates(tot)<- ~x+y
+
+
+coordinates(m2)<- ~x+y
+coordinates(m9)<- ~x+y
+
+
+d <-gDistance(Rdata,Adata,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+
+
+minD2=c()
+s2=sample(c("A","B"),length(Rdata),replace=TRUE)
+for (i in 1:100)
+{
+s3=sample(s2)
+d <- gDistance(tot[which(s3=="A"),],tot[which(s3=="B"),],byid=T)
+nn=c()
+for (j in 1:dim(d)[1])
+{
+nn[j]=min(d[j,])
+}
+minD2[i]=mean(nn)
+}
+
+
+
+par(mfrow=c(1,3))
+par(bg="ivory")
+plot(m2$x, m2$y,pch=16,col='black',main="Visual Analysis")
+points(m9$x, m9$y,pch=16,col='magenta')
+plot(density(minD2),col='navy',main="Mean Distance Analysis")
+abline(v=mean(minD2),col='navy',lty=2)
+abline(v=mean(minD),col='red')
+plot(m2$x, m2$y,pch=16,col='black',main="SD Elipse Analysis")
+points(m9$x, m9$y,pch=16,col='magenta')
+polygon(b[,2],b[,3],border='black')
+polygon(ii[,2],ii[,3],border='magenta')  
+
+
+----------------------------------------------------------------------------------------------------------
+IRAQ
+
+m7=read.csv("Arrests.csv")
+m2=read.csv("Abduction_forced_disappearance.csv")
+m8=read.csv("Remote_explosive_landmine_IED.csv")
+m7 = m7 %>% select(26,27)
+m2 = m2 %>% select(26,27)
+m8 = m8 %>% select(26,27)
+
+
+
+Rdata=m2
+Adata=m8
+tot=rbind(Rdata,Adata)
+names(Rdata)<-c("x","y")
+names(Adata)<-c("x","y")
+names(tot)<-c("x","y")
+coordinates(Rdata)<- ~x+y
+names(m2) <-c("x","y")
+names(m8) <-c("x","y")
+coordinates(Adata)<- ~x+y
+coordinates(tot)<- ~x+y
+
+
+coordinates(m2)<- ~x+y
+coordinates(m8)<- ~x+y
+
+
+d <-gDistance(Rdata,Adata,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+
+
+minD2=c()
+s2=sample(c("A","B"),length(Rdata),replace=TRUE)
+for (i in 1:100)
+{
+s3=sample(s2)
+d <- gDistance(tot[which(s3=="A"),],tot[which(s3=="B"),],byid=T)
+nn=c()
+for (j in 1:dim(d)[1])
+{
+nn[j]=min(d[j,])
+}
+minD2[i]=mean(nn)
+}
+
+
+
+par(mfrow=c(1,3))
+par(bg="ivory")
+plot(m2$x, m2$y,pch=16,col='black',main="Visual Analysis")
+points(m8$x, m8$y,pch=16,col='blue')
+plot(density(minD2),col='navy',main="Mean Distance Analysis")
+abline(v=mean(minD2),col='navy',lty=2)
+abline(v=mean(minD),col='red')
+plot(m2$x, m2$y,pch=16,col='black',main="SD Elipse Analysis")
+points(m8$x, m8$y,pch=16,col='blue')
+polygon(b[,2],b[,3],border='black')
+polygon(h[,2],h[,3],border='blue')
+
+
+Rdata=m2
+Adata=m7
+tot=rbind(Rdata,Adata)
+names(Rdata)<-c("x","y")
+names(Adata)<-c("x","y")
+names(tot)<-c("x","y")
+coordinates(Rdata)<- ~x+y
+names(m2) <-c("x","y")
+names(m7) <-c("x","y")
+coordinates(Adata)<- ~x+y
+coordinates(tot)<- ~x+y
+
+
+coordinates(m2)<- ~x+y
+coordinates(m7)<- ~x+y
+
+
+d <-gDistance(Rdata,Adata,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+
+
+minD2=c()
+s2=sample(c("A","B"),length(Rdata),replace=TRUE)
+for (i in 1:100)
+{
+s3=sample(s2)
+d <- gDistance(tot[which(s3=="A"),],tot[which(s3=="B"),],byid=T)
+nn=c()
+for (j in 1:dim(d)[1])
+{
+nn[j]=min(d[j,])
+}
+minD2[i]=mean(nn)
+}
+
+
+
+par(mfrow=c(1,3))
+par(bg="ivory")
+plot(m2$x, m2$y,pch=16,col='black',main="Visual Analysis")
+points(m7$x, m7$y,pch=16,col='gray')
+plot(density(minD2),col='navy',main="Mean Distance Analysis")
+abline(v=mean(minD2),col='navy',lty=2)
+abline(v=mean(minD),col='red')
+plot(m2$x, m2$y,pch=16,col='black',main="SD Elipse Analysis")
+points(m7$x, m7$y,pch=16,col='gray')
+polygon(b[,2],b[,3],border='black')
+polygon(g[,2],g[,3],border='gray')
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------
+
+LIBYA
+
+7=read.csv("Arrests.csv")
+m2=read.csv("Abduction_forced_disappearance.csv")
+m8=read.csv("Remote_explosive_landmine_IED.csv")
+m7 = m7 %>% select(26,27)
+m2 = m2 %>% select(26,27)
+m8 = m8 %>% select(26,27)
+
+
+
+Rdata=m2
+Adata=m8
+tot=rbind(Rdata,Adata)
+names(Rdata)<-c("x","y")
+names(Adata)<-c("x","y")
+names(tot)<-c("x","y")
+coordinates(Rdata)<- ~x+y
+names(m2) <-c("x","y")
+names(m8) <-c("x","y")
+coordinates(Adata)<- ~x+y
+coordinates(tot)<- ~x+y
+
+
+coordinates(m2)<- ~x+y
+coordinates(m8)<- ~x+y
+
+
+d <-gDistance(Rdata,Adata,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+
+
+minD2=c()
+s2=sample(c("A","B"),length(Rdata),replace=TRUE)
+for (i in 1:100)
+{
+s3=sample(s2)
+d <- gDistance(tot[which(s3=="A"),],tot[which(s3=="B"),],byid=T)
+nn=c()
+for (j in 1:dim(d)[1])
+{
+nn[j]=min(d[j,])
+}
+minD2[i]=mean(nn)
+}
+
+
+
+par(mfrow=c(1,3))
+par(bg="ivory")
+plot(m2$x, m2$y,pch=16,col='black',main="Visual Analysis")
+points(m8$x, m8$y,pch=16,col='blue')
+plot(density(minD2),col='navy',main="Mean Distance Analysis")
+abline(v=mean(minD2),col='navy',lty=2)
+abline(v=mean(minD),col='red')
+plot(m2$x, m2$y,pch=16,col='black',main="SD Elipse Analysis")
+points(m8$x, m8$y,pch=16,col='blue')
+polygon(b[,2],b[,3],border='black')
+polygon(h[,2],h[,3],border='blue')
+
+
+Rdata=m2
+Adata=m7
+tot=rbind(Rdata,Adata)
+names(Rdata)<-c("x","y")
+names(Adata)<-c("x","y")
+names(tot)<-c("x","y")
+coordinates(Rdata)<- ~x+y
+names(m2) <-c("x","y")
+names(m7) <-c("x","y")
+coordinates(Adata)<- ~x+y
+coordinates(tot)<- ~x+y
+
+
+coordinates(m2)<- ~x+y
+coordinates(m7)<- ~x+y
+
+
+d <-gDistance(Rdata,Adata,byid=T)
+
+minD=c()
+for (i in 1:dim(d)[1])
+{
+minD[i]=min(d[i,])
+}
+mean(minD)
+
+
+
+minD2=c()
+s2=sample(c("A","B"),length(Rdata),replace=TRUE)
+for (i in 1:100)
+{
+s3=sample(s2)
+d <- gDistance(tot[which(s3=="A"),],tot[which(s3=="B"),],byid=T)
+nn=c()
+for (j in 1:dim(d)[1])
+{
+nn[j]=min(d[j,])
+}
+minD2[i]=mean(nn)
+}
+
+
+
+par(mfrow=c(1,3))
+par(bg="ivory")
+plot(m2$x, m2$y,pch=16,col='black',main="Visual Analysis")
+points(m7$x, m7$y,pch=16,col='gray')
+plot(density(minD2),col='navy',main="Mean Distance Analysis")
+abline(v=mean(minD2),col='navy',lty=2)
+abline(v=mean(minD),col='red')
+plot(m2$x, m2$y,pch=16,col='black',main="SD Elipse Analysis")
+points(m7$x, m7$y,pch=16,col='gray')
+polygon(b[,2],b[,3],border='black')
+polygon(g[,2],g[,3],border='gray')
+
+
+
+
+
+
+
+
